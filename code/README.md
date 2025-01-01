@@ -50,6 +50,8 @@ Receiver (receive.parameters)
 -timeout: Maximum duration (in seconds) for sniffing packets (e.g., 30 seconds).
 -log_file_name: File where the decoded message is logged.
 
+Covert Channel Capacity: 38.46 bits/s
+
 Conclusion
 This project demonstrates how to create a covert communication channel using the DNS protocol. By leveraging the RD flag, we transmit secret messages in a manner that mimics legitimate network traffic. While this implementation is simple, it provides a foundation for exploring more advanced covert communication techniques.
 
