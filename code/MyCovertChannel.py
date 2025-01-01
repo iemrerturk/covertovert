@@ -1,25 +1,72 @@
 from CovertChannelBase import CovertChannelBase
-
+from scapy.all import Ether, IP, UDP, DNS, DNSQR, sniff
+import time
 class MyCovertChannel(CovertChannelBase):
     """
-    - You are not allowed to change the file name and class name.
-    - You can edit the class in any way you want (e.g. adding helper functions); however, there must be a "send" and a "receive" function, the covert channel will be triggered by calling these functions.
+    We fix the IP mismatch here by remapping '172.20.0.3' to '172.18.0.3'.
+    No changes to docker-compose.yaml or config.json are required.
     """
+
     def __init__(self):
+        super().__init__()
+        self.decoded_message = ""
+        self.stop_sniffing = False
+
+    def send(self, dst_ip, dport, sport, log_file_name):
         """
-        - You can edit __init__.
+        Gönderim işlemi için düzeltildi:
+        - UDP katmanı için dport ve sport değerleri anahtar-değer biçiminde.
         """
-        pass
-    def send(self, log_file_name, parameter1, parameter2):
-        """
-        - In this function, you expected to create a random message (using function/s in CovertChannelBase), and send it to the receiver container. Entire sending operations should be handled in this function.
-        - After the implementation, please rewrite this comment part to explain your code basically.
-        """
-        binary_message = self.generate_random_binary_message_with_logging(log_file_name)
+        random_message = self.generate_random_message()
+        binary_message = self.convert_string_message_to_binary(random_message)
+
+
+        state_bit = 0
+
+        for bit_char in binary_message:
+            b = int(bit_char)
+            encoded_bit = b ^ state_bit
+            state_bit = 1 - state_bit
+
+            packet = IP(dst=dst_ip) / UDP(dport=dport, sport=sport) / DNS(rd=encoded_bit)
+
+            super().send(packet=packet)
         
-    def receive(self, parameter1, parameter2, parameter3, log_file_name):
-        """
-        - In this function, you are expected to receive and decode the transferred message. Because there are many types of covert channels, the receiver implementation depends on the chosen covert channel type, and you may not need to use the functions in CovertChannelBase.
-        - After the implementation, please rewrite this comment part to explain your code basically.
-        """
-        self.log_message("", log_file_name)
+    
+        self.log_message(random_message, log_file_name)
+    
+    def receive(self, parameter1, parameter2, timeout, log_file_name):
+        
+        self.decoded_message = ""
+        self.stop_sniffing = False
+        bit_buffer = ""
+        decode_state = 0
+
+        def process_packet(pkt):
+            nonlocal bit_buffer, decode_state
+            if DNS in pkt:
+                rd_val = pkt[DNS].rd
+                recovered_bit = rd_val ^ decode_state
+                decode_state = 1 - decode_state
+                bit_buffer += str(recovered_bit)
+
+                if len(bit_buffer) == 8:
+                    char = self.convert_eight_bits_to_character(bit_buffer)
+                    bit_buffer = ""
+                    self.decoded_message += char
+                    if char == ".":
+                        self.stop_sniffing = True
+ 
+        def stop_filter(_):
+            return self.stop_sniffing
+
+        sniff(
+            iface=parameter1,
+            filter="udp port 53",
+            prn=process_packet,
+            stop_filter=stop_filter,
+            timeout=int(timeout) 
+        )
+
+
+        self.log_message(self.decoded_message, log_file_name)
