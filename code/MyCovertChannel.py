@@ -2,10 +2,7 @@ from CovertChannelBase import CovertChannelBase
 from scapy.all import Ether, IP, UDP, DNS, DNSQR, sniff
 import time
 class MyCovertChannel(CovertChannelBase):
-    """
-    We fix the IP mismatch here by remapping '172.20.0.3' to '172.18.0.3'.
-    No changes to docker-compose.yaml or config.json are required.
-    """
+   
 
     def __init__(self):
         super().__init__()
@@ -13,10 +10,7 @@ class MyCovertChannel(CovertChannelBase):
         self.stop_sniffing = False
 
     def send(self, dst_ip, dport, sport, log_file_name):
-        """
-        Gönderim işlemi için düzeltildi:
-        - UDP katmanı için dport ve sport değerleri anahtar-değer biçiminde.
-        """
+        
         random_message = self.generate_random_message()
         binary_message = self.convert_string_message_to_binary(random_message)
 
